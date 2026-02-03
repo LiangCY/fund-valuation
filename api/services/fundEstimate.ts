@@ -80,7 +80,6 @@ function createEmptyEstimate(fundCode: string): FundEstimate {
     lastChangePercent: 0,
     lastNavDate: '',
     estimateTime: '',
-    market: 'A股',
     type: '',
     navUpdatedToday: false,
   };
@@ -128,7 +127,6 @@ export async function getFundEstimateFromEastMoney(fundCode: string): Promise<Fu
       lastChangePercent: navUpdatedToday ? (yesterday?.changePercent || 0) : (latest?.changePercent || 0),
       lastNavDate: latest?.date || data.jzrq || '',
       estimateTime: data.gztime || new Date().toISOString(),
-      market: 'A股',
       type: '',
       navUpdatedToday: !!navUpdatedToday,
     };

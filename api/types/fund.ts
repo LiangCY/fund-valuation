@@ -2,7 +2,6 @@ export interface Fund {
   code: string;
   name: string;
   type: string;
-  market: 'A股' | '港股' | '美股';
 }
 
 export interface FundEstimate {
@@ -14,7 +13,6 @@ export interface FundEstimate {
   lastChangePercent: number;
   lastNavDate: string;
   estimateTime: string;
-  market: string;
   type: string;
   navUpdatedToday: boolean;
 }
