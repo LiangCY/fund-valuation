@@ -1,30 +1,9 @@
 import { Router } from 'express';
-import { 
-  searchFunds, 
-  getFundDetail,
-  getAllFunds 
-} from '../services/fundData.js';
 import { searchFundsRealtime } from '../services/fundSearch.js';
 import { getFundEstimateFromEastMoney, getBatchEstimatesFromEastMoney } from '../services/fundEstimate.js';
 import { getFundHistoryFromEastMoney } from '../services/fundHistory.js';
 
 const router = Router();
-
-// 获取所有基金列表
-router.get('/list', (req, res) => {
-  try {
-    const funds = getAllFunds();
-    res.json({
-      success: true,
-      data: funds,
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
-    });
-  }
-});
 
 // 搜索基金（使用真实API）
 router.get('/search', async (req, res) => {
@@ -32,12 +11,7 @@ router.get('/search', async (req, res) => {
     const { query } = req.query;
     const queryStr = (query as string || '').trim();
     
-    let funds;
-    if (queryStr) {
-      funds = await searchFundsRealtime(queryStr);
-    } else {
-      funds = searchFunds('');
-    }
+    const funds = queryStr ? await searchFundsRealtime(queryStr) : [];
     
     res.json({
       success: true,
@@ -45,31 +19,6 @@ router.get('/search', async (req, res) => {
         funds,
         total: funds.length,
       },
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
-    });
-  }
-});
-
-// 获取基金详情
-router.get('/detail/:code', (req, res) => {
-  try {
-    const { code } = req.params;
-    const fund = getFundDetail(code);
-    
-    if (!fund) {
-      return res.status(404).json({
-        success: false,
-        error: 'Fund not found',
-      });
-    }
-    
-    res.json({
-      success: true,
-      data: fund,
     });
   } catch (error) {
     res.status(500).json({

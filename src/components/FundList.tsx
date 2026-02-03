@@ -35,6 +35,11 @@ export function FundList({ funds, onViewDetail }: FundListProps) {
 
   const sortedFunds = useMemo(() => {
     return [...funds].sort((a, b) => {
+      const aFailed = a.name === '--';
+      const bFailed = b.name === '--';
+      if (aFailed && !bFailed) return 1;
+      if (!aFailed && bFailed) return -1;
+      
       let comparison = 0;
       switch (sortField) {
         case "name":
