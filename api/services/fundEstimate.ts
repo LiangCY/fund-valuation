@@ -73,7 +73,7 @@ function isToday(dateStr: string): boolean {
 function createEmptyEstimate(fundCode: string): FundEstimate {
   return {
     code: fundCode,
-    name: `基金 ${fundCode}`,
+    name: '--',
     estimateNav: 0,
     lastNav: 0,
     changePercent: 0,

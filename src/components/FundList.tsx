@@ -156,6 +156,7 @@ export function FundList({ funds, onViewDetail }: FundListProps) {
             const updatedToday = fund.navUpdatedToday;
             const isPositive = fund.changePercent >= 0;
             const hasData = fund.estimateNav > 0;
+            const isFailed = fund.name === '--';
             const shares = holdings.get(fund.code) || 0;
             const profit = updatedToday
               ? shares * fund.lastNav * (fund.changePercent / 100)
@@ -166,7 +167,7 @@ export function FundList({ funds, onViewDetail }: FundListProps) {
             return (
               <tr
                 key={fund.code}
-                className="hover:bg-gray-50 transition-colors"
+                className={`transition-colors ${isFailed ? 'bg-gray-100' : 'hover:bg-gray-50'}`}
               >
                 <td className="px-4 py-3">
                   <div className="flex flex-col">
