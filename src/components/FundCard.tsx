@@ -43,12 +43,11 @@ export function FundCard({ fund, onViewDetail, showRemove = true }: FundCardProp
           </h3>
           <div className="flex items-center gap-2 mt-1">
             <span className="text-sm text-gray-500">{fund.code}</span>
-            <span className="text-xs px-2 py-0.5 bg-gray-100 rounded-full text-gray-600">
-              {fund.market}
-            </span>
-            <span className="text-xs px-2 py-0.5 bg-blue-50 rounded-full text-blue-600">
-              {fund.type}
-            </span>
+            {fund.type && (
+              <span className="text-xs px-2 py-0.5 bg-blue-50 rounded-full text-blue-600">
+                {fund.type}
+              </span>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-1">

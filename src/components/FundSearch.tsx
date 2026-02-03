@@ -71,12 +71,11 @@ export function FundSearch({ onSelect }: FundSearchProps) {
                       </div>
                       <div className="flex items-center gap-2 mt-0.5">
                         <span className="text-sm text-gray-500">{fund.code}</span>
-                        <span className="text-xs px-1.5 py-0.5 bg-gray-100 rounded text-gray-600">
-                          {fund.market}
-                        </span>
-                        <span className="text-xs px-1.5 py-0.5 bg-blue-50 rounded text-blue-600">
-                          {fund.type}
-                        </span>
+                        {fund.type && (
+                          <span className="text-xs px-1.5 py-0.5 bg-blue-50 rounded text-blue-600">
+                            {fund.type}
+                          </span>
+                        )}
                       </div>
                     </div>
                     {isInWatchlist(fund.code) ? (
