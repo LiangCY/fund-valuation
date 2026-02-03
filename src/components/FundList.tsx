@@ -163,9 +163,7 @@ export function FundList({ funds, onViewDetail }: FundListProps) {
             const hasData = fund.estimateNav > 0;
             const isFailed = fund.name === '--';
             const shares = holdings.get(fund.code) || 0;
-            const profit = updatedToday
-              ? shares * fund.lastNav * (fund.changePercent / 100)
-              : getProfit(fund);
+            const profit = getProfit(fund);
             const isProfitPositive = profit >= 0;
             const isLastChangePositive = fund.lastChangePercent >= 0;
 
