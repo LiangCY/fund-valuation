@@ -70,7 +70,23 @@ function isToday(dateStr: string): boolean {
   return dateStr === todayStr;
 }
 
-export async function getFundEstimateFromEastMoney(fundCode: string): Promise<FundEstimate | null> {
+function createEmptyEstimate(fundCode: string): FundEstimate {
+  return {
+    code: fundCode,
+    name: `基金 ${fundCode}`,
+    estimateNav: 0,
+    lastNav: 0,
+    changePercent: 0,
+    lastChangePercent: 0,
+    lastNavDate: '',
+    estimateTime: '',
+    market: 'A股',
+    type: '',
+    navUpdatedToday: false,
+  };
+}
+
+export async function getFundEstimateFromEastMoney(fundCode: string): Promise<FundEstimate> {
   try {
     const timestamp = Date.now();
     const url = `https://fundgz.1234567.com.cn/js/${fundCode}.js?rt=${timestamp}`;
@@ -87,7 +103,7 @@ export async function getFundEstimateFromEastMoney(fundCode: string): Promise<Fu
 
     if (!response.ok) {
       console.error(`Failed to fetch estimate for ${fundCode}: ${response.status}`);
-      return null;
+      return createEmptyEstimate(fundCode);
     }
 
     const text = await response.text();
@@ -95,7 +111,7 @@ export async function getFundEstimateFromEastMoney(fundCode: string): Promise<Fu
     const match = text.match(/jsonpgz\((.*)\)/);
     if (!match || !match[1]) {
       console.error(`Invalid response format for ${fundCode}`);
-      return null;
+      return createEmptyEstimate(fundCode);
     }
 
     const data: EastMoneyEstimateData = JSON.parse(match[1]);
@@ -118,7 +134,7 @@ export async function getFundEstimateFromEastMoney(fundCode: string): Promise<Fu
     };
   } catch (error) {
     console.error(`Error fetching estimate for ${fundCode}:`, error);
-    return null;
+    return createEmptyEstimate(fundCode);
   }
 }
 
@@ -127,9 +143,10 @@ export async function getBatchEstimatesFromEastMoney(fundCodes: string[]): Promi
     fundCodes.map(code => getFundEstimateFromEastMoney(code))
   );
 
-  return results
-    .filter((result): result is PromiseFulfilledResult<FundEstimate | null> => 
-      result.status === 'fulfilled' && result.value !== null
-    )
-    .map(result => result.value as FundEstimate);
+  return results.map((result, index) => {
+    if (result.status === 'fulfilled') {
+      return result.value;
+    }
+    return createEmptyEstimate(fundCodes[index]);
+  });
 }
