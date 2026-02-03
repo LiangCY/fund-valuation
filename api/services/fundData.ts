@@ -71,9 +71,12 @@ export function generateEstimate(fundCode: string): FundEstimate {
     estimateNav: Math.round(estimateNav * 10000) / 10000,
     lastNav: lastNav,
     changePercent: Math.round(changePercent * 100) / 100,
+    lastChangePercent: Math.round((Math.random() - 0.5) * 4 * 100) / 100,
+    lastNavDate: new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     estimateTime: now.toISOString(),
     market: fund.market,
     type: fund.type,
+    navUpdatedToday: false,
   };
 }
 
@@ -133,7 +136,7 @@ export function getHistoricalData(fundCode: string, period: '1d' | '1w' | '1m' |
     data.push({
       date: date.toISOString().split('T')[0],
       nav: Math.round(currentNav * 10000) / 10000,
-      estimate: Math.round(currentNav * (1 + (Math.random() - 0.5) * 0.01) * 10000) / 10000,
+      changePercent: Math.round((Math.random() - 0.5) * 4 * 100) / 100,
     });
   }
 
