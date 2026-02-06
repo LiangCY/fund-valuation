@@ -307,8 +307,9 @@ export function IndexDetail({ index, onClose }: IndexDetailProps) {
                       dataKey="close"
                       name="close"
                       fill="#3b82f6"
-                      shape={(props: { x: number; y: number; width: number; height: number; payload: { open: number; close: number; high: number; low: number; isUp: boolean } }) => {
-                        const { x, width, payload } = props;
+                      shape={(props) => {
+                        const { x = 0, width = 0, payload } = props as { x?: number; width?: number; payload?: { open: number; close: number; high: number; low: number; isUp: boolean } };
+                        if (!payload) return <g />;
                         const { open, close, high, low, isUp } = payload;
                         const yScale = (klineYDomain![1] - klineYDomain![0]) / 280;
                         const candleColor = isUp ? "#ef4444" : "#22c55e";
