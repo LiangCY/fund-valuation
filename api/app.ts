@@ -13,6 +13,7 @@ import dotenv from "dotenv";
 import { fileURLToPath } from "url";
 import authRoutes from "./routes/auth.js";
 import fundRoutes from "./routes/funds.js";
+import marketRoutes from "./routes/market.js";
 
 // for esm mode
 const __filename = fileURLToPath(import.meta.url);
@@ -32,6 +33,7 @@ app.use(express.urlencoded({ extended: true, limit: "10mb" }));
  */
 app.use("/api/auth", authRoutes);
 app.use("/api/funds", fundRoutes);
+app.use("/api/market", marketRoutes);
 
 /**
  * health

@@ -52,3 +52,38 @@ export interface ComparisonData {
     totalDays: number;
   };
 }
+
+export interface MarketIndex {
+  code: string;
+  name: string;
+  current: number;
+  change: number;
+  changePercent: number;
+  open: number;
+  high: number;
+  low: number;
+  volume: number;
+  amount: number;
+  updateTime: string;
+  market: "A" | "HK" | "US";
+}
+
+export interface IndexTrendData {
+  time: string;
+  price: number;
+  avgPrice: number;
+  change: number;
+  changePercent: number;
+  volume: number;
+}
+
+export interface IndexKlineData {
+  date: string;
+  open: number;
+  close: number;
+  high: number;
+  low: number;
+  volume: number;
+  change: number;
+  changePercent: number;
+}

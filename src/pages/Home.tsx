@@ -1,14 +1,23 @@
-import { useState, useEffect, useRef } from 'react';
-import { RefreshCw, TrendingUp, TrendingDown, PieChart, Wallet, Download, Upload } from 'lucide-react';
-import { FundSearch } from '../components/FundSearch.js';
-import { FundList } from '../components/FundList.js';
-import { FundDetail } from '../components/FundDetail.js';
-import { useWatchlistEstimates } from '../hooks/useFundData.js';
-import { useFundStore } from '../store/fundStore.js';
-import { FundEstimate } from '../types/fund.js';
+import { useState, useEffect, useRef } from "react";
+import {
+  RefreshCw,
+  TrendingUp,
+  TrendingDown,
+  PieChart,
+  Wallet,
+  Download,
+  Upload,
+} from "lucide-react";
+import { FundSearch } from "../components/FundSearch.js";
+import { FundList } from "../components/FundList.js";
+import { FundDetail } from "../components/FundDetail.js";
+import { useWatchlistEstimates } from "../hooks/useFundData.js";
+import { useFundStore } from "../store/fundStore.js";
+import { FundEstimate } from "../types/fund.js";
 
 export default function Home() {
-  const { watchlist, estimates, loading, error, refresh } = useWatchlistEstimates(60000);
+  const { watchlist, estimates, loading, error, refresh } =
+    useWatchlistEstimates(60000);
   const holdings = useFundStore((state) => state.holdings);
   const exportData = useFundStore((state) => state.exportData);
   const importData = useFundStore((state) => state.importData);
@@ -42,9 +51,11 @@ export default function Home() {
 
   const handleExport = () => {
     const data = exportData();
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const blob = new Blob([JSON.stringify(data, null, 2)], {
+      type: "application/json",
+    });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
+    const a = document.createElement("a");
     a.href = url;
     a.download = `fund-data-${new Date().toISOString().slice(0, 10)}.json`;
     document.body.appendChild(a);
@@ -56,7 +67,7 @@ export default function Home() {
   const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    
+
     const reader = new FileReader();
     reader.onload = (event) => {
       try {
@@ -65,81 +76,71 @@ export default function Home() {
         if (success) {
           refresh();
         } else {
-          alert('导入失败：数据格式不正确');
+          alert("导入失败：数据格式不正确");
         }
       } catch {
-        alert('导入失败：文件解析错误');
+        alert("导入失败：文件解析错误");
       }
     };
     reader.readAsText(file);
     if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+      fileInputRef.current.value = "";
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-30">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-3">
-              <div className="bg-blue-500 p-2 rounded-lg">
-                <PieChart className="w-6 h-6 text-white" />
-              </div>
-              <h1 className="text-xl font-bold text-gray-900">基金实时估值</h1>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-500 hidden sm:inline mr-2">
-                最后更新: {lastUpdate.toLocaleTimeString('zh-CN')}
-              </span>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".json"
-                onChange={handleImport}
-                className="hidden"
-              />
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                className="p-2 text-gray-500 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-colors"
-                title="导入数据"
-              >
-                <Upload className="w-5 h-5" />
-              </button>
-              <button
-                onClick={handleExport}
-                disabled={watchlist.length === 0}
-                className="p-2 text-gray-500 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-50"
-                title="导出数据"
-              >
-                <Download className="w-5 h-5" />
-              </button>
-              <button
-                onClick={refresh}
-                disabled={loading}
-                className="p-2 text-gray-500 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-50"
-                title="刷新数据"
-              >
-                <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
-              </button>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Search */}
-        <div className="mb-8">
+    <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex-1">
           <FundSearch />
         </div>
+        <div className="flex items-center gap-2 ml-4">
+          <span className="text-sm text-gray-500 hidden sm:inline">
+            更新: {lastUpdate.toLocaleTimeString("zh-CN")}
+          </span>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".json"
+            onChange={handleImport}
+            className="hidden"
+          />
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="p-2 text-gray-500 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-colors"
+            title="导入数据"
+          >
+            <Upload className="w-5 h-5" />
+          </button>
+          <button
+            onClick={handleExport}
+            disabled={watchlist.length === 0}
+            className="p-2 text-gray-500 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-50"
+            title="导出数据"
+          >
+            <Download className="w-5 h-5" />
+          </button>
+          <button
+            onClick={refresh}
+            disabled={loading}
+            className="p-2 text-gray-500 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-50"
+            title="刷新数据"
+          >
+            <RefreshCw
+              className={`w-5 h-5 ${loading ? "animate-spin" : ""}`}
+            />
+          </button>
+        </div>
+      </div>
 
         {/* Stats */}
         {estimates.length > 0 && (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
             <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
               <div className="text-sm text-gray-500 mb-1">自选基金</div>
-              <div className="text-2xl font-bold text-gray-900">{stats.total}</div>
+              <div className="text-2xl font-bold text-gray-900">
+                {stats.total}
+              </div>
             </div>
             <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
               <div className="text-sm text-gray-500 mb-1">上涨</div>
@@ -157,9 +158,12 @@ export default function Home() {
             </div>
             <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
               <div className="text-sm text-gray-500 mb-1">今日估算收益</div>
-              <div className={`text-2xl font-bold flex items-center gap-1 ${totalProfit >= 0 ? 'text-red-500' : 'text-green-500'}`}>
+              <div
+                className={`text-2xl font-bold flex items-center gap-1 ${totalProfit >= 0 ? "text-red-500" : "text-green-500"}`}
+              >
                 <Wallet className="w-5 h-5" />
-                {totalProfit >= 0 ? '+' : ''}{totalProfit.toFixed(2)}
+                {totalProfit >= 0 ? "+" : ""}
+                {totalProfit.toFixed(2)}
               </div>
             </div>
           </div>
@@ -178,7 +182,9 @@ export default function Home() {
             <div className="bg-gray-100 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-4">
               <PieChart className="w-10 h-10 text-gray-400" />
             </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">暂无自选基金</h3>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">
+              暂无自选基金
+            </h3>
             <p className="text-gray-500 mb-6">在上方搜索框中添加您关注的基金</p>
           </div>
         )}
@@ -198,7 +204,6 @@ export default function Home() {
             <p className="text-gray-500">加载中...</p>
           </div>
         )}
-      </main>
 
       {/* Detail Modal */}
       {selectedFund && (
@@ -208,6 +213,6 @@ export default function Home() {
           onClose={() => setSelectedFund(null)}
         />
       )}
-    </div>
+    </main>
   );
 }
