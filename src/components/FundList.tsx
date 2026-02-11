@@ -149,6 +149,9 @@ export function FundList({ funds, onViewDetail }: FundListProps) {
               昨日涨跌
             </th>
             <th className="px-4 py-3 text-right text-sm font-medium text-gray-600">
+              持有金额
+            </th>
+            <th className="px-4 py-3 text-right text-sm font-medium text-gray-600">
               持有份额
             </th>
             <th className="px-4 py-3 text-center text-sm font-medium text-gray-600">
@@ -163,6 +166,7 @@ export function FundList({ funds, onViewDetail }: FundListProps) {
             const hasData = fund.estimateNav > 0;
             const isFailed = fund.name === '--';
             const shares = holdings.get(fund.code) || 0;
+            const holdingAmount = shares > 0 && hasData ? shares * fund.estimateNav : 0;
             const profit = getProfit(fund);
             const isProfitPositive = profit >= 0;
             const isLastChangePositive = fund.lastChangePercent >= 0;
@@ -242,6 +246,15 @@ export function FundList({ funds, onViewDetail }: FundListProps) {
                       {fund.lastNav.toFixed(4)}
                     </span>
                   </div>
+                </td>
+                <td className="px-4 py-3 text-right">
+                  {holdingAmount > 0 ? (
+                    <span className="font-medium text-gray-900">
+                      {holdingAmount.toFixed(2)}
+                    </span>
+                  ) : (
+                    <span className="text-gray-400">-</span>
+                  )}
                 </td>
                 <td className="px-4 py-3 text-right">
                   {editingCode === fund.code ? (
