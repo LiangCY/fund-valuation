@@ -35,8 +35,10 @@ export default function Home() {
 
   const getTotalProfit = () => {
     return estimates.reduce((sum, fund) => {
-      const shares = holdings.get(fund.code) || 0;
-      if (shares <= 0 || fund.estimateNav <= 0 || fund.lastNav <= 0) return sum;
+      const holding = holdings.get(fund.code);
+      if (!holding || fund.estimateNav <= 0 || fund.lastNav <= 0) return sum;
+      const shares = holding.shares;
+      if (shares <= 0) return sum;
       return sum + shares * (fund.estimateNav - fund.lastNav);
     }, 0);
   };
@@ -126,84 +128,82 @@ export default function Home() {
             className="p-2 text-gray-500 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-50"
             title="刷新数据"
           >
-            <RefreshCw
-              className={`w-5 h-5 ${loading ? "animate-spin" : ""}`}
-            />
+            <RefreshCw className={`w-5 h-5 ${loading ? "animate-spin" : ""}`} />
           </button>
         </div>
       </div>
 
-        {/* Stats */}
-        {estimates.length > 0 && (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
-            <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-              <div className="text-sm text-gray-500 mb-1">自选基金</div>
-              <div className="text-2xl font-bold text-gray-900">
-                {stats.total}
-              </div>
-            </div>
-            <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-              <div className="text-sm text-gray-500 mb-1">上涨</div>
-              <div className="text-2xl font-bold text-red-500 flex items-center gap-1">
-                <TrendingUp className="w-5 h-5" />
-                {stats.up}
-              </div>
-            </div>
-            <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-              <div className="text-sm text-gray-500 mb-1">下跌</div>
-              <div className="text-2xl font-bold text-green-500 flex items-center gap-1">
-                <TrendingDown className="w-5 h-5" />
-                {stats.down}
-              </div>
-            </div>
-            <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-              <div className="text-sm text-gray-500 mb-1">今日估算收益</div>
-              <div
-                className={`text-2xl font-bold flex items-center gap-1 ${totalProfit >= 0 ? "text-red-500" : "text-green-500"}`}
-              >
-                <Wallet className="w-5 h-5" />
-                {totalProfit >= 0 ? "+" : ""}
-                {totalProfit.toFixed(2)}
-              </div>
+      {/* Stats */}
+      {estimates.length > 0 && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+          <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+            <div className="text-sm text-gray-500 mb-1">自选基金</div>
+            <div className="text-2xl font-bold text-gray-900">
+              {stats.total}
             </div>
           </div>
-        )}
-
-        {/* Error */}
-        {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-red-600">
-            {error}
-          </div>
-        )}
-
-        {/* Empty State */}
-        {watchlist.length === 0 && (
-          <div className="text-center py-16">
-            <div className="bg-gray-100 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-4">
-              <PieChart className="w-10 h-10 text-gray-400" />
+          <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+            <div className="text-sm text-gray-500 mb-1">上涨</div>
+            <div className="text-2xl font-bold text-red-500 flex items-center gap-1">
+              <TrendingUp className="w-5 h-5" />
+              {stats.up}
             </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
-              暂无自选基金
-            </h3>
-            <p className="text-gray-500 mb-6">在上方搜索框中添加您关注的基金</p>
           </div>
-        )}
-
-        {/* Fund List */}
-        {estimates.length > 0 && (
-          <FundList
-            funds={estimates}
-            onViewDetail={(fund) => setSelectedFund(fund)}
-          />
-        )}
-
-        {/* Loading State */}
-        {loading && estimates.length === 0 && (
-          <div className="text-center py-16">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-            <p className="text-gray-500">加载中...</p>
+          <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+            <div className="text-sm text-gray-500 mb-1">下跌</div>
+            <div className="text-2xl font-bold text-green-500 flex items-center gap-1">
+              <TrendingDown className="w-5 h-5" />
+              {stats.down}
+            </div>
           </div>
-        )}
+          <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+            <div className="text-sm text-gray-500 mb-1">今日估算收益</div>
+            <div
+              className={`text-2xl font-bold flex items-center gap-1 ${totalProfit >= 0 ? "text-red-500" : "text-green-500"}`}
+            >
+              <Wallet className="w-5 h-5" />
+              {totalProfit >= 0 ? "+" : ""}
+              {totalProfit.toFixed(2)}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Error */}
+      {error && (
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-red-600">
+          {error}
+        </div>
+      )}
+
+      {/* Empty State */}
+      {watchlist.length === 0 && (
+        <div className="text-center py-16">
+          <div className="bg-gray-100 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-4">
+            <PieChart className="w-10 h-10 text-gray-400" />
+          </div>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">
+            暂无自选基金
+          </h3>
+          <p className="text-gray-500 mb-6">在上方搜索框中添加您关注的基金</p>
+        </div>
+      )}
+
+      {/* Fund List */}
+      {estimates.length > 0 && (
+        <FundList
+          funds={estimates}
+          onViewDetail={(fund) => setSelectedFund(fund)}
+        />
+      )}
+
+      {/* Loading State */}
+      {loading && estimates.length === 0 && (
+        <div className="text-center py-16">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p className="text-gray-500">加载中...</p>
+        </div>
+      )}
 
       {/* Detail Modal */}
       {selectedFund && (

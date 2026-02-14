@@ -17,29 +17,77 @@ interface FundListProps {
   onViewDetail?: (fund: FundEstimate) => void;
 }
 
-type SortField = "name" | "changePercent" | "estimateNav" | "profit";
+type SortField =
+  | "name"
+  | "changePercent"
+  | "estimateNav"
+  | "profit"
+  | "yesterdayProfit";
 type SortOrder = "asc" | "desc";
 
 export function FundList({ funds, onViewDetail }: FundListProps) {
-  const { removeFromWatchlist, holdings, setHolding } = useFundStore();
+  const { removeFromWatchlist, holdings, setHolding, setCostNav, getShares } =
+    useFundStore();
   const [sortField, setSortField] = useState<SortField>("changePercent");
   const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
   const [editingCode, setEditingCode] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
+  const [editingCostCode, setEditingCostCode] = useState<string | null>(null);
+  const [costValue, setCostValue] = useState("");
 
   const getProfit = (fund: FundEstimate) => {
-    const shares = holdings.get(fund.code) || 0;
+    const shares = getShares(fund.code);
     if (shares <= 0 || fund.estimateNav <= 0 || fund.lastNav <= 0) return 0;
     return shares * (fund.estimateNav - fund.lastNav);
   };
 
+  const getYesterdayProfit = (fund: FundEstimate) => {
+    const shares = getShares(fund.code);
+    if (shares <= 0 || fund.lastNav <= 0 || fund.prevNav <= 0) return 0;
+    return shares * (fund.lastNav - fund.prevNav);
+  };
+
+  const getTotalProfit = (fund: FundEstimate, costNav: number) => {
+    const shares = getShares(fund.code);
+    if (shares <= 0 || fund.lastNav <= 0 || costNav <= 0) return 0;
+    return shares * (fund.lastNav - costNav);
+  };
+
+  const saveCostFromProfit = (code: string, lastNav: number) => {
+    const totalProfitInput = parseFloat(costValue);
+    const shares = getShares(code);
+    if (!isNaN(totalProfitInput) && shares > 0 && lastNav > 0) {
+      const costNav = parseFloat(
+        (lastNav - totalProfitInput / shares).toFixed(10),
+      );
+      if (costNav > 0) {
+        setCostNav(code, costNav);
+      }
+    }
+    setEditingCostCode(null);
+    setCostValue("");
+  };
+
+  const handleCostKeyDown = (
+    e: React.KeyboardEvent,
+    code: string,
+    lastNav: number,
+  ) => {
+    if (e.key === "Enter") {
+      saveCostFromProfit(code, lastNav);
+    } else if (e.key === "Escape") {
+      setEditingCostCode(null);
+      setCostValue("");
+    }
+  };
+
   const sortedFunds = useMemo(() => {
     return [...funds].sort((a, b) => {
-      const aFailed = a.name === '--';
-      const bFailed = b.name === '--';
+      const aFailed = a.name === "--";
+      const bFailed = b.name === "--";
       if (aFailed && !bFailed) return 1;
       if (!aFailed && bFailed) return -1;
-      
+
       let comparison = 0;
       switch (sortField) {
         case "name":
@@ -54,9 +102,13 @@ export function FundList({ funds, onViewDetail }: FundListProps) {
         case "profit":
           comparison = getProfit(a) - getProfit(b);
           break;
+        case "yesterdayProfit":
+          comparison = getYesterdayProfit(a) - getYesterdayProfit(b);
+          break;
       }
       return sortOrder === "asc" ? comparison : -comparison;
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [funds, sortField, sortOrder, holdings]);
 
   const handleSort = (field: SortField) => {
@@ -65,7 +117,11 @@ export function FundList({ funds, onViewDetail }: FundListProps) {
     } else {
       setSortField(field);
       setSortOrder(
-        field === "changePercent" || field === "profit" ? "desc" : "asc",
+        field === "changePercent" ||
+          field === "profit" ||
+          field === "yesterdayProfit"
+          ? "desc"
+          : "asc",
       );
     }
   };
@@ -81,16 +137,15 @@ export function FundList({ funds, onViewDetail }: FundListProps) {
     );
   };
 
-  const startEdit = (code: string) => {
-    const currentShares = holdings.get(code) || 0;
+  const startEdit = (code: string, currentShares: number) => {
     setEditValue(currentShares > 0 ? currentShares.toString() : "");
     setEditingCode(code);
   };
 
   const saveEdit = () => {
     if (editingCode) {
-      const shares = parseFloat(editValue) || 0;
-      setHolding(editingCode, shares);
+      const value = parseFloat(editValue) || 0;
+      setHolding(editingCode, value);
       setEditingCode(null);
       setEditValue("");
     }
@@ -145,14 +200,23 @@ export function FundList({ funds, onViewDetail }: FundListProps) {
                 <SortIcon field="profit" />
               </button>
             </th>
+            <th className="px-4 py-3 text-right">
+              <button
+                onClick={() => handleSort("yesterdayProfit")}
+                className="flex items-center gap-1 text-sm font-medium text-gray-600 hover:text-gray-900 ml-auto"
+              >
+                昨日收益
+                <SortIcon field="yesterdayProfit" />
+              </button>
+            </th>
             <th className="px-4 py-3 text-right text-sm font-medium text-gray-600">
-              昨日涨跌
+              持仓收益
             </th>
             <th className="px-4 py-3 text-right text-sm font-medium text-gray-600">
               持有金额
             </th>
             <th className="px-4 py-3 text-right text-sm font-medium text-gray-600">
-              持有份额
+              最新净值
             </th>
             <th className="px-4 py-3 text-center text-sm font-medium text-gray-600">
               操作
@@ -164,9 +228,11 @@ export function FundList({ funds, onViewDetail }: FundListProps) {
             const updatedToday = fund.navUpdatedToday;
             const isPositive = fund.changePercent >= 0;
             const hasData = fund.estimateNav > 0;
-            const isFailed = fund.name === '--';
-            const shares = holdings.get(fund.code) || 0;
-            const holdingAmount = shares > 0 && hasData ? shares * fund.estimateNav : 0;
+            const isFailed = fund.name === "--";
+            const holding = holdings.get(fund.code);
+            const shares = holding?.shares || 0;
+            const holdingAmount =
+              shares > 0 && fund.lastNav > 0 ? shares * fund.lastNav : 0;
             const profit = getProfit(fund);
             const isProfitPositive = profit >= 0;
             const isLastChangePositive = fund.lastChangePercent >= 0;
@@ -174,7 +240,7 @@ export function FundList({ funds, onViewDetail }: FundListProps) {
             return (
               <tr
                 key={fund.code}
-                className={`transition-colors ${isFailed ? 'bg-gray-100' : 'hover:bg-gray-50'}`}
+                className={`transition-colors ${isFailed ? "bg-gray-100" : "hover:bg-gray-50"}`}
               >
                 <td className="px-4 py-3">
                   <div className="flex flex-col">
@@ -233,28 +299,89 @@ export function FundList({ funds, onViewDetail }: FundListProps) {
                   )}
                 </td>
                 <td className="px-4 py-3 text-right">
-                  <div className="flex flex-col items-end">
-                    <span
-                      className={`text-sm font-medium ${
-                        isLastChangePositive ? "text-red-600" : "text-green-600"
-                      }`}
-                    >
-                      {isLastChangePositive ? "+" : ""}
-                      {fund.lastChangePercent.toFixed(2)}%
-                    </span>
-                    <span className="text-xs text-gray-500 mt-0.5">
-                      {fund.lastNav.toFixed(4)}
-                    </span>
-                  </div>
+                  {(() => {
+                    const yesterdayProfit = getYesterdayProfit(fund);
+                    const isYesterdayProfitPositive = yesterdayProfit >= 0;
+                    return (
+                      <div className="flex flex-col items-end">
+                        {shares > 0 ? (
+                          <span
+                            className={`text-sm font-medium ${isYesterdayProfitPositive ? "text-red-600" : "text-green-600"}`}
+                          >
+                            {isYesterdayProfitPositive ? "+" : ""}
+                            {yesterdayProfit.toFixed(2)}
+                          </span>
+                        ) : (
+                          <span className="text-sm text-gray-400">-</span>
+                        )}
+                        <span
+                          className={`text-xs mt-0.5 ${
+                            isLastChangePositive
+                              ? "text-red-500"
+                              : "text-green-500"
+                          }`}
+                        >
+                          {isLastChangePositive ? "+" : ""}
+                          {fund.lastChangePercent.toFixed(2)}%
+                        </span>
+                      </div>
+                    );
+                  })()}
                 </td>
                 <td className="px-4 py-3 text-right">
-                  {holdingAmount > 0 ? (
-                    <span className="font-medium text-gray-900">
-                      {holdingAmount.toFixed(2)}
-                    </span>
-                  ) : (
-                    <span className="text-gray-400">-</span>
-                  )}
+                  {(() => {
+                    const costNav = holding?.costNav || 0;
+                    const totalProfit = getTotalProfit(fund, costNav);
+                    const isTotalProfitPositive = totalProfit >= 0;
+                    if (editingCostCode === fund.code) {
+                      return (
+                        <input
+                          type="number"
+                          value={costValue}
+                          onChange={(e) => setCostValue(e.target.value)}
+                          onBlur={() =>
+                            saveCostFromProfit(fund.code, fund.lastNav)
+                          }
+                          onKeyDown={(e) =>
+                            handleCostKeyDown(e, fund.code, fund.lastNav)
+                          }
+                          className="w-24 px-2 py-1 text-right text-sm border border-blue-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          autoFocus
+                          placeholder="累计收益"
+                        />
+                      );
+                    }
+                    if (shares > 0 && costNav > 0) {
+                      return (
+                        <div className="flex flex-col items-end">
+                          <button
+                            onClick={() => {
+                              setEditingCostCode(fund.code);
+                              setCostValue(totalProfit.toFixed(2));
+                            }}
+                            className={`font-medium hover:underline ${isTotalProfitPositive ? "text-red-600" : "text-green-600"}`}
+                          >
+                            {isTotalProfitPositive ? "+" : ""}
+                            {totalProfit.toFixed(2)}
+                          </button>
+                          <span className="text-xs text-gray-400 mt-0.5">
+                            成本:{costNav.toFixed(4)}
+                          </span>
+                        </div>
+                      );
+                    }
+                    return (
+                      <button
+                        onClick={() => {
+                          setEditingCostCode(fund.code);
+                          setCostValue("");
+                        }}
+                        className="text-gray-400 hover:text-blue-600 text-sm"
+                      >
+                        设置收益
+                      </button>
+                    );
+                  })()}
                 </td>
                 <td className="px-4 py-3 text-right">
                   {editingCode === fund.code ? (
@@ -268,15 +395,33 @@ export function FundList({ funds, onViewDetail }: FundListProps) {
                       autoFocus
                       placeholder="份额"
                     />
+                  ) : holdingAmount > 0 ? (
+                    <div className="flex flex-col items-end">
+                      <span className="text-sm text-blue-600 font-medium">
+                        {holdingAmount.toFixed(2)}
+                      </span>
+                      <button
+                        onClick={() => startEdit(fund.code, shares)}
+                        className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-blue-600 mt-0.5"
+                      >
+                        {shares.toFixed(2)}份
+                        <Edit3 className="w-3 h-3" />
+                      </button>
+                    </div>
                   ) : (
                     <button
-                      onClick={() => startEdit(fund.code)}
-                      className="inline-flex items-center gap-1 text-sm text-gray-600 hover:text-blue-600"
+                      onClick={() => startEdit(fund.code, 0)}
+                      className="inline-flex items-center gap-1 text-sm text-gray-400 hover:text-blue-600"
                     >
-                      {shares > 0 ? shares.toFixed(2) : "-"}
+                      -
                       <Edit3 className="w-3 h-3" />
                     </button>
                   )}
+                </td>
+                <td className="px-4 py-3 text-right">
+                  <span className="text-sm text-gray-700">
+                    {fund.lastNav.toFixed(4)}
+                  </span>
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex items-center justify-center gap-1">

@@ -9,6 +9,7 @@ export interface FundEstimate {
   name: string;
   estimateNav: number;
   lastNav: number;
+  prevNav: number;
   changePercent: number;
   lastChangePercent: number;
   lastNavDate: string;

@@ -1,12 +1,19 @@
-import { create } from 'zustand';
-import { Fund, FundEstimate } from '../types/fund.js';
+import { create } from "zustand";
+import { FundEstimate } from "../types/fund.js";
 
-interface FundHolding {
-  code: string;
+export interface FundHolding {
   shares: number;
+  costNav: number;
 }
 
 interface ExportData {
+  watchlist: string[];
+  holdings: [string, FundHolding][];
+  exportTime: string;
+  version: number;
+}
+
+interface LegacyExportData {
   watchlist: string[];
   holdings: [string, number][];
   exportTime: string;
@@ -15,11 +22,11 @@ interface ExportData {
 
 interface FundStore {
   watchlist: string[];
-  holdings: Map<string, number>;
+  holdings: Map<string, FundHolding>;
   estimates: Map<string, FundEstimate>;
   loading: boolean;
   error: string | null;
-  
+
   addToWatchlist: (code: string) => void;
   removeFromWatchlist: (code: string) => void;
   setEstimates: (estimates: FundEstimate[]) => void;
@@ -28,13 +35,15 @@ interface FundStore {
   setError: (error: string | null) => void;
   loadWatchlist: () => void;
   setHolding: (code: string, shares: number) => void;
-  getHolding: (code: string) => number;
+  setCostNav: (code: string, costNav: number) => void;
+  getHolding: (code: string) => FundHolding | undefined;
+  getShares: (code: string) => number;
   exportData: () => ExportData;
-  importData: (data: ExportData) => boolean;
+  importData: (data: ExportData | LegacyExportData) => boolean;
 }
 
-const STORAGE_KEY = 'fund-valuation-watchlist';
-const HOLDINGS_KEY = 'fund-valuation-holdings';
+const STORAGE_KEY = "fund-valuation-watchlist";
+const HOLDINGS_KEY = "fund-valuation-holdings";
 
 export const useFundStore = create<FundStore>((set, get) => ({
   watchlist: [],
@@ -90,11 +99,31 @@ export const useFundStore = create<FundStore>((set, get) => ({
       }
       const holdingsStored = localStorage.getItem(HOLDINGS_KEY);
       if (holdingsStored) {
-        const holdingsArr: [string, number][] = JSON.parse(holdingsStored);
-        set({ holdings: new Map(holdingsArr) });
+        const holdingsArr = JSON.parse(holdingsStored);
+        const holdingsMap = new Map<string, FundHolding>();
+        for (const [code, value] of holdingsArr) {
+          if (typeof value === "number") {
+            holdingsMap.set(code, {
+              shares: value,
+              costNav: 0,
+            });
+          } else if (typeof value === "object" && value !== null) {
+            const holding = value as {
+              shares?: number;
+              amount?: number;
+              costNav?: number;
+            };
+            const shares = holding.shares || (holding.amount ? 0 : 0);
+            holdingsMap.set(code, {
+              shares: shares || 0,
+              costNav: holding.costNav || 0,
+            });
+          }
+        }
+        set({ holdings: holdingsMap });
       }
     } catch (error) {
-      console.error('Failed to load watchlist:', error);
+      console.error("Failed to load watchlist:", error);
     }
   },
 
@@ -102,7 +131,12 @@ export const useFundStore = create<FundStore>((set, get) => ({
     set((state) => {
       const newHoldings = new Map(state.holdings);
       if (shares > 0) {
-        newHoldings.set(code, shares);
+        const existingHolding = state.holdings.get(code);
+        const holding: FundHolding = {
+          shares,
+          costNav: existingHolding?.costNav || 0,
+        };
+        newHoldings.set(code, holding);
       } else {
         newHoldings.delete(code);
       }
@@ -111,8 +145,28 @@ export const useFundStore = create<FundStore>((set, get) => ({
     });
   },
 
+  setCostNav: (code: string, costNav: number) => {
+    set((state) => {
+      const existingHolding = state.holdings.get(code);
+      if (!existingHolding) return state;
+      const newHoldings = new Map(state.holdings);
+      newHoldings.set(code, {
+        ...existingHolding,
+        costNav,
+      });
+      saveHoldings(newHoldings);
+      return { holdings: newHoldings };
+    });
+  },
+
   getHolding: (code: string) => {
-    return get().holdings.get(code) || 0;
+    return get().holdings.get(code);
+  },
+
+  getShares: (code: string) => {
+    const holding = get().holdings.get(code);
+    if (!holding) return 0;
+    return holding.shares;
   },
 
   exportData: () => {
@@ -121,21 +175,36 @@ export const useFundStore = create<FundStore>((set, get) => ({
       watchlist: state.watchlist,
       holdings: Array.from(state.holdings.entries()),
       exportTime: new Date().toISOString(),
-      version: 1,
+      version: 2,
     };
   },
 
-  importData: (data: ExportData) => {
+  importData: (data: ExportData | LegacyExportData) => {
     try {
       if (!data.watchlist || !Array.isArray(data.watchlist)) {
         return false;
       }
-      const watchlist = data.watchlist.filter((code) => typeof code === 'string' && code.length > 0);
-      const holdings = new Map<string, number>();
+      const watchlist = data.watchlist.filter(
+        (code) => typeof code === "string" && code.length > 0,
+      );
+      const holdings = new Map<string, FundHolding>();
       if (data.holdings && Array.isArray(data.holdings)) {
-        data.holdings.forEach(([code, shares]) => {
-          if (typeof code === 'string' && typeof shares === 'number' && shares > 0) {
-            holdings.set(code, shares);
+        data.holdings.forEach(([code, value]) => {
+          if (typeof code === "string") {
+            if (typeof value === "number" && value > 0) {
+              holdings.set(code, {
+                shares: value,
+                costNav: 0,
+              });
+            } else if (typeof value === "object" && value !== null) {
+              const holding = value as { shares?: number; costNav?: number };
+              if (holding.shares && holding.shares > 0) {
+                holdings.set(code, {
+                  shares: holding.shares || 0,
+                  costNav: holding.costNav || 0,
+                });
+              }
+            }
           }
         });
       }
@@ -149,6 +218,9 @@ export const useFundStore = create<FundStore>((set, get) => ({
   },
 }));
 
-function saveHoldings(holdings: Map<string, number>) {
-  localStorage.setItem(HOLDINGS_KEY, JSON.stringify(Array.from(holdings.entries())));
+function saveHoldings(holdings: Map<string, FundHolding>) {
+  localStorage.setItem(
+    HOLDINGS_KEY,
+    JSON.stringify(Array.from(holdings.entries())),
+  );
 }

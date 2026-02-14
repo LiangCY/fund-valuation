@@ -1,57 +1,27 @@
-# React + TypeScript + Vite
+# 基金工具
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+一个基金估值与行情查看工具。
 
-Currently, two official plugins are available:
+## 功能特性
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+### 估值功能
 
-## Expanding the ESLint configuration
+实时追踪基金净值估算，帮助投资者及时了解持仓收益变化。
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+- **实时估值** - 盘中实时估算净值和涨跌幅
+- **自选基金** - 添加/移除自选基金，数据本地持久化
+- **持仓管理** - 记录持有份额和成本净值，自动计算收益
+- **收益统计** - 估算收益、昨日收益、累计持仓收益一目了然
+- **批量刷新** - 一键刷新所有自选基金，支持自动定时刷新
+- **历史净值** - 查看基金历史净值走势图和明细
+- **数据导入/导出** - 支持 JSON 格式导入导出自选和持仓数据
 
-```js
-export default tseslint.config({
-  extends: [
-    // Remove ...tseslint.configs.recommended and replace with this
-    ...tseslint.configs.recommendedTypeChecked,
-    // Alternatively, use this for stricter rules
-    ...tseslint.configs.strictTypeChecked,
-    // Optionally, add this for stylistic rules
-    ...tseslint.configs.stylisticTypeChecked,
-  ],
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
-```
+### 行情功能
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+查看主要市场指数行情，包括 A 股、港股、美股市场指数。
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## 数据来源
 
-export default tseslint.config({
-  extends: [
-    // other configs...
-    // Enable lint rules for React
-    reactX.configs['recommended-typescript'],
-    // Enable lint rules for React DOM
-    reactDom.configs.recommended,
-  ],
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
-```
+- 基金估值数据：东方财富
+- 基金历史净值：东方财富
+- 市场指数行情：东方财富

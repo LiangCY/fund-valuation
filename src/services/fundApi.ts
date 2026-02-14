@@ -113,3 +113,17 @@ export async function getIndexKline(
   }
   return result.data;
 }
+
+export async function getTradingDays(
+  startDate: string,
+  endDate: string,
+): Promise<string[]> {
+  const response = await fetch(
+    `${API_BASE}/funds/trading-days?startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`,
+  );
+  const result = await response.json();
+  if (!result.success) {
+    throw new Error(result.error || "Failed to get trading days");
+  }
+  return result.data;
+}

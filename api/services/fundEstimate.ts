@@ -1,4 +1,4 @@
-import { FundEstimate } from '../types/fund.js';
+import { FundEstimate } from "../types/fund.js";
 
 interface EastMoneyEstimateData {
   fundcode: string;
@@ -38,26 +38,31 @@ async function getHistoryNavData(fundCode: string): Promise<HistoryNavData> {
     const url = `https://api.fund.eastmoney.com/f10/lsjz?fundCode=${fundCode}&pageIndex=1&pageSize=2&_=${Date.now()}`;
     const response = await fetch(url, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
-        'Referer': 'https://fund.eastmoney.com/',
+        "User-Agent":
+          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+        Referer: "https://fund.eastmoney.com/",
       },
     });
     if (!response.ok) return { latest: null, yesterday: null };
     const data: EastMoneyHistoryResponse = await response.json();
     const list = data.Data?.LSJZList || [];
-    
-    const latest = list[0] ? {
-      date: list[0].FSRQ,
-      nav: parseFloat(list[0].DWJZ) || 0,
-      changePercent: parseFloat(list[0].JZZZL) || 0,
-    } : null;
-    
-    const yesterday = list[1] ? {
-      date: list[1].FSRQ,
-      nav: parseFloat(list[1].DWJZ) || 0,
-      changePercent: parseFloat(list[1].JZZZL) || 0,
-    } : null;
-    
+
+    const latest = list[0]
+      ? {
+          date: list[0].FSRQ,
+          nav: parseFloat(list[0].DWJZ) || 0,
+          changePercent: parseFloat(list[0].JZZZL) || 0,
+        }
+      : null;
+
+    const yesterday = list[1]
+      ? {
+          date: list[1].FSRQ,
+          nav: parseFloat(list[1].DWJZ) || 0,
+          changePercent: parseFloat(list[1].JZZZL) || 0,
+        }
+      : null;
+
     return { latest, yesterday };
   } catch {
     return { latest: null, yesterday: null };
@@ -66,47 +71,53 @@ async function getHistoryNavData(fundCode: string): Promise<HistoryNavData> {
 
 function isToday(dateStr: string): boolean {
   const today = new Date();
-  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
   return dateStr === todayStr;
 }
 
 function createEmptyEstimate(fundCode: string): FundEstimate {
   return {
     code: fundCode,
-    name: '--',
+    name: "--",
     estimateNav: 0,
     lastNav: 0,
+    prevNav: 0,
     changePercent: 0,
     lastChangePercent: 0,
-    lastNavDate: '',
-    estimateTime: '',
-    type: '',
+    lastNavDate: "",
+    estimateTime: "",
+    type: "",
     navUpdatedToday: false,
   };
 }
 
-export async function getFundEstimateFromEastMoney(fundCode: string): Promise<FundEstimate> {
+export async function getFundEstimateFromEastMoney(
+  fundCode: string,
+): Promise<FundEstimate> {
   try {
     const timestamp = Date.now();
     const url = `https://fundgz.1234567.com.cn/js/${fundCode}.js?rt=${timestamp}`;
-    
+
     const [response, historyData] = await Promise.all([
       fetch(url, {
         headers: {
-          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-          'Referer': 'https://fund.eastmoney.com/',
+          "User-Agent":
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+          Referer: "https://fund.eastmoney.com/",
         },
       }),
       getHistoryNavData(fundCode),
     ]);
 
     if (!response.ok) {
-      console.error(`Failed to fetch estimate for ${fundCode}: ${response.status}`);
+      console.error(
+        `Failed to fetch estimate for ${fundCode}: ${response.status}`,
+      );
       return createEmptyEstimate(fundCode);
     }
 
     const text = await response.text();
-    
+
     const match = text.match(/jsonpgz\((.*)\)/);
     if (!match || !match[1]) {
       console.error(`Invalid response format for ${fundCode}`);
@@ -114,20 +125,36 @@ export async function getFundEstimateFromEastMoney(fundCode: string): Promise<Fu
     }
 
     const data: EastMoneyEstimateData = JSON.parse(match[1]);
-    
+
     const { latest, yesterday } = historyData;
     const navUpdatedToday = latest && isToday(latest.date);
+
+    const gztime = data.gztime || "";
+    const isEstimateToday = gztime && isToday(gztime.split(" ")[0]);
+
+    const hasValidEstimate = navUpdatedToday || isEstimateToday;
 
     return {
       code: data.fundcode,
       name: data.name,
-      estimateNav: navUpdatedToday ? latest.nav : (parseFloat(data.gsz) || 0),
-      lastNav: parseFloat(data.dwjz) || 0,
-      changePercent: navUpdatedToday ? latest.changePercent : (parseFloat(data.gszzl) || 0),
-      lastChangePercent: navUpdatedToday ? (yesterday?.changePercent || 0) : (latest?.changePercent || 0),
-      lastNavDate: latest?.date || data.jzrq || '',
-      estimateTime: data.gztime || new Date().toISOString(),
-      type: '',
+      estimateNav: hasValidEstimate
+        ? navUpdatedToday
+          ? latest.nav
+          : parseFloat(data.gsz) || 0
+        : 0,
+      lastNav: latest?.nav || parseFloat(data.dwjz) || 0,
+      prevNav: yesterday?.nav || parseFloat(data.dwjz) || 0,
+      changePercent: hasValidEstimate
+        ? navUpdatedToday
+          ? latest.changePercent
+          : parseFloat(data.gszzl) || 0
+        : 0,
+      lastChangePercent: navUpdatedToday
+        ? yesterday?.changePercent || 0
+        : latest?.changePercent || 0,
+      lastNavDate: latest?.date || data.jzrq || "",
+      estimateTime: hasValidEstimate ? gztime || new Date().toISOString() : "",
+      type: "",
       navUpdatedToday: !!navUpdatedToday,
     };
   } catch (error) {
@@ -136,13 +163,15 @@ export async function getFundEstimateFromEastMoney(fundCode: string): Promise<Fu
   }
 }
 
-export async function getBatchEstimatesFromEastMoney(fundCodes: string[]): Promise<FundEstimate[]> {
+export async function getBatchEstimatesFromEastMoney(
+  fundCodes: string[],
+): Promise<FundEstimate[]> {
   const results = await Promise.allSettled(
-    fundCodes.map(code => getFundEstimateFromEastMoney(code))
+    fundCodes.map((code) => getFundEstimateFromEastMoney(code)),
   );
 
   return results.map((result, index) => {
-    if (result.status === 'fulfilled') {
+    if (result.status === "fulfilled") {
       return result.value;
     }
     return createEmptyEstimate(fundCodes[index]);

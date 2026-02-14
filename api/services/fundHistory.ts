@@ -82,3 +82,42 @@ export async function getFundHistoryFromEastMoney(
     return [];
   }
 }
+
+export async function getTradingDaysFromEastMoney(
+  startDate: string,
+  endDate: string
+): Promise<string[]> {
+  try {
+    const start = new Date(startDate);
+    const today = new Date();
+    const daysFromToday = Math.ceil((today.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+    
+    const fundCode = '510300';
+    const pagesNeeded = Math.ceil(daysFromToday / 20) + 1;
+    
+    const pagePromises: Promise<EastMoneyHistoryResponse | null>[] = [];
+    for (let i = 1; i <= pagesNeeded; i++) {
+      pagePromises.push(fetchHistoryPage(fundCode, i));
+    }
+    
+    const results = await Promise.all(pagePromises);
+    
+    const allDates: string[] = [];
+    for (const data of results) {
+      if (data?.ErrCode === 0 && data.Data?.LSJZList) {
+        for (const item of data.Data.LSJZList) {
+          allDates.push(item.FSRQ);
+        }
+      }
+    }
+
+    const tradingDays = allDates
+      .filter(date => date >= startDate && date <= endDate)
+      .sort();
+
+    return tradingDays;
+  } catch (error) {
+    console.error('Error fetching trading days:', error);
+    return [];
+  }
+}
