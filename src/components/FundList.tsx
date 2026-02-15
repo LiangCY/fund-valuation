@@ -22,7 +22,9 @@ type SortField =
   | "changePercent"
   | "estimateNav"
   | "profit"
-  | "yesterdayProfit";
+  | "yesterdayProfit"
+  | "holdingAmount"
+  | "totalProfit";
 type SortOrder = "asc" | "desc";
 
 export function FundList({ funds, onViewDetail }: FundListProps) {
@@ -47,10 +49,22 @@ export function FundList({ funds, onViewDetail }: FundListProps) {
     return shares * (fund.lastNav - fund.prevNav);
   };
 
+  const getHoldingAmount = (fund: FundEstimate) => {
+    const shares = getShares(fund.code);
+    if (shares <= 0 || fund.lastNav <= 0) return 0;
+    return shares * fund.lastNav;
+  };
+
   const getTotalProfit = (fund: FundEstimate, costNav: number) => {
     const shares = getShares(fund.code);
     if (shares <= 0 || fund.lastNav <= 0 || costNav <= 0) return 0;
     return shares * (fund.lastNav - costNav);
+  };
+
+  const getTotalProfitForSort = (fund: FundEstimate) => {
+    const holding = holdings.get(fund.code);
+    const costNav = holding?.costNav || 0;
+    return getTotalProfit(fund, costNav);
   };
 
   const saveCostFromProfit = (code: string, lastNav: number) => {
@@ -105,6 +119,12 @@ export function FundList({ funds, onViewDetail }: FundListProps) {
         case "yesterdayProfit":
           comparison = getYesterdayProfit(a) - getYesterdayProfit(b);
           break;
+        case "holdingAmount":
+          comparison = getHoldingAmount(a) - getHoldingAmount(b);
+          break;
+        case "totalProfit":
+          comparison = getTotalProfitForSort(a) - getTotalProfitForSort(b);
+          break;
       }
       return sortOrder === "asc" ? comparison : -comparison;
     });
@@ -119,7 +139,9 @@ export function FundList({ funds, onViewDetail }: FundListProps) {
       setSortOrder(
         field === "changePercent" ||
           field === "profit" ||
-          field === "yesterdayProfit"
+          field === "yesterdayProfit" ||
+          field === "holdingAmount" ||
+          field === "totalProfit"
           ? "desc"
           : "asc",
       );
@@ -209,11 +231,23 @@ export function FundList({ funds, onViewDetail }: FundListProps) {
                 <SortIcon field="yesterdayProfit" />
               </button>
             </th>
-            <th className="px-4 py-3 text-right text-sm font-medium text-gray-600">
-              持仓收益
+            <th className="px-4 py-3 text-right">
+              <button
+                onClick={() => handleSort("totalProfit")}
+                className="flex items-center gap-1 text-sm font-medium text-gray-600 hover:text-gray-900 ml-auto"
+              >
+                持仓收益
+                <SortIcon field="totalProfit" />
+              </button>
             </th>
-            <th className="px-4 py-3 text-right text-sm font-medium text-gray-600">
-              持有金额
+            <th className="px-4 py-3 text-right">
+              <button
+                onClick={() => handleSort("holdingAmount")}
+                className="flex items-center gap-1 text-sm font-medium text-gray-600 hover:text-gray-900 ml-auto"
+              >
+                持有金额
+                <SortIcon field="holdingAmount" />
+              </button>
             </th>
             <th className="px-4 py-3 text-right text-sm font-medium text-gray-600">
               最新净值
