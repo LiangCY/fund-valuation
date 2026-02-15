@@ -8,7 +8,6 @@ import {
 } from '../services/fundApi.js';
 import { useFundStore } from '../store/fundStore.js';
 
-// 搜索基金
 export function useFundSearch(query: string) {
   const [results, setResults] = useState<Fund[]>([]);
   const [loading, setLoading] = useState(false);
@@ -39,7 +38,63 @@ export function useFundSearch(query: string) {
   return { results, loading, error };
 }
 
-// 获取自选基金估值（带自动刷新）
+export function useGroupEstimates(groupFunds: string[], refreshInterval: number = 60000) {
+  const [estimates, setEstimates] = useState<FundEstimate[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const fundsRef = useRef(groupFunds);
+  fundsRef.current = groupFunds;
+
+  const fetchEstimates = useCallback(async () => {
+    const currentFunds = fundsRef.current;
+    if (currentFunds.length === 0) {
+      setEstimates([]);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await getBatchEstimates(currentFunds);
+      setEstimates(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch estimates');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchEstimates();
+
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+    }
+
+    intervalRef.current = setInterval(fetchEstimates, refreshInterval);
+
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [fetchEstimates, refreshInterval]);
+
+  useEffect(() => {
+    fetchEstimates();
+  }, [groupFunds.join(','), fetchEstimates]);
+
+  return { 
+    estimates, 
+    loading,
+    error,
+    refresh: fetchEstimates 
+  };
+}
+
 export function useWatchlistEstimates(refreshInterval: number = 60000) {
   const watchlist = useFundStore((state) => state.watchlist);
   const estimates = useFundStore((state) => state.estimates);
@@ -112,7 +167,6 @@ export function useWatchlistEstimates(refreshInterval: number = 60000) {
   };
 }
 
-// 获取基金历史数据
 export function useFundHistory(code: string, period: string = '1m') {
   const [data, setData] = useState<{ date: string; nav: number; changePercent: number }[]>([]);
   const [loading, setLoading] = useState(true);
@@ -153,7 +207,6 @@ export function useFundHistory(code: string, period: string = '1m') {
   return { data, loading, error };
 }
 
-// 获取基金对比数据
 export function useFundComparison(code: string, days: number = 30) {
   const [data, setData] = useState<{
     comparisons: { date: string; estimateNav: number; actualNav: number; deviationPercent: number }[];
