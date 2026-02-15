@@ -8,6 +8,7 @@ import {
   ArrowUp,
   ArrowDown,
   Settings2,
+  Loader2,
 } from "lucide-react";
 import { FundEstimate } from "../types/fund.js";
 import { useFundStore } from "../store/fundStore.js";
@@ -16,6 +17,7 @@ import { FundEditModal } from "./FundEditModal.js";
 interface FundListProps {
   funds: FundEstimate[];
   groupId: string;
+  loading?: boolean;
   onViewDetail?: (fund: FundEstimate) => void;
 }
 
@@ -29,7 +31,12 @@ type SortField =
   | "totalProfit";
 type SortOrder = "asc" | "desc";
 
-export function FundList({ funds, groupId, onViewDetail }: FundListProps) {
+export function FundList({
+  funds,
+  groupId,
+  loading,
+  onViewDetail,
+}: FundListProps) {
   const { removeFromWatchlist, getHolding, getShares } = useFundStore();
   const [sortField, setSortField] = useState<SortField>("changePercent");
   const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
@@ -135,7 +142,12 @@ export function FundList({ funds, groupId, onViewDetail }: FundListProps) {
 
   return (
     <>
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden relative">
+        {loading && (
+          <div className="absolute inset-0 bg-white/60 z-10 flex items-center justify-center">
+            <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+          </div>
+        )}
         <table className="w-full">
           <thead className="bg-gray-50 border-b border-gray-100">
             <tr>
@@ -234,7 +246,9 @@ export function FundList({ funds, groupId, onViewDetail }: FundListProps) {
                             已更新
                           </span>
                         )}
-                        <span className="text-xs text-gray-500">{fund.code}</span>
+                        <span className="text-xs text-gray-500">
+                          {fund.code}
+                        </span>
                       </div>
                     </div>
                   </td>

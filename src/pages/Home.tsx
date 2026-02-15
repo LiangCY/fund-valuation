@@ -243,6 +243,7 @@ export default function Home() {
         <FundList
           funds={estimates}
           groupId={activeGroupId}
+          loading={loading}
           onViewDetail={(fund) => setSelectedFund(fund)}
         />
       )}
