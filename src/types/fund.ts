@@ -4,6 +4,16 @@ export interface Fund {
   type: string;
 }
 
+export interface FundGroup {
+  id: string;
+  name: string;
+  funds: string[];
+  order: number;
+}
+
+export const DEFAULT_GROUP_ID = "default";
+export const DEFAULT_GROUP_NAME = "默认";
+
 export interface FundEstimate {
   code: string;
   name: string;

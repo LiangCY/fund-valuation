@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import {
   RefreshCw,
   TrendingUp,
@@ -7,10 +7,12 @@ import {
   Wallet,
   Download,
   Upload,
+  Banknote,
 } from "lucide-react";
 import { FundSearch } from "../components/FundSearch.js";
 import { FundList } from "../components/FundList.js";
 import { FundDetail } from "../components/FundDetail.js";
+import { GroupTabs } from "../components/GroupTabs.js";
 import { useWatchlistEstimates } from "../hooks/useFundData.js";
 import { useFundStore } from "../store/fundStore.js";
 import { FundEstimate } from "../types/fund.js";
@@ -18,7 +20,9 @@ import { FundEstimate } from "../types/fund.js";
 export default function Home() {
   const { watchlist, estimates, loading, error, refresh } =
     useWatchlistEstimates(60000);
-  const holdings = useFundStore((state) => state.holdings);
+  const groups = useFundStore((state) => state.groups);
+  const activeGroupId = useFundStore((state) => state.activeGroupId);
+  const getHolding = useFundStore((state) => state.getHolding);
   const exportData = useFundStore((state) => state.exportData);
   const importData = useFundStore((state) => state.importData);
   const [selectedFund, setSelectedFund] = useState<FundEstimate | null>(null);
@@ -33,9 +37,16 @@ export default function Home() {
     prevLoadingRef.current = loading;
   }, [loading, estimates.length]);
 
+  const activeGroup = groups.find((g) => g.id === activeGroupId);
+  const activeGroupFunds = activeGroup?.funds || [];
+
+  const filteredEstimates = useMemo(() => {
+    return estimates.filter((e) => activeGroupFunds.includes(e.code));
+  }, [estimates, activeGroupFunds]);
+
   const getTotalProfit = () => {
-    return estimates.reduce((sum, fund) => {
-      const holding = holdings.get(fund.code);
+    return filteredEstimates.reduce((sum, fund) => {
+      const holding = getHolding(activeGroupId, fund.code);
       if (!holding || fund.estimateNav <= 0 || fund.lastNav <= 0) return sum;
       const shares = holding.shares;
       if (shares <= 0) return sum;
@@ -43,12 +54,23 @@ export default function Home() {
     }, 0);
   };
 
+  const getTotalAmount = () => {
+    return filteredEstimates.reduce((sum, fund) => {
+      const holding = getHolding(activeGroupId, fund.code);
+      if (!holding || fund.lastNav <= 0) return sum;
+      const shares = holding.shares;
+      if (shares <= 0) return sum;
+      return sum + shares * fund.lastNav;
+    }, 0);
+  };
+
   const totalProfit = getTotalProfit();
+  const totalAmount = getTotalAmount();
 
   const stats = {
-    total: estimates.length,
-    up: estimates.filter((e) => e.changePercent > 0).length,
-    down: estimates.filter((e) => e.changePercent < 0).length,
+    total: filteredEstimates.length,
+    up: filteredEstimates.filter((e) => e.changePercent > 0).length,
+    down: filteredEstimates.filter((e) => e.changePercent < 0).length,
   };
 
   const handleExport = () => {
@@ -133,13 +155,15 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Stats */}
-      {estimates.length > 0 && (
+      <GroupTabs />
+
+      {filteredEstimates.length > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
           <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-            <div className="text-sm text-gray-500 mb-1">自选基金</div>
-            <div className="text-2xl font-bold text-gray-900">
-              {stats.total}
+            <div className="text-sm text-gray-500 mb-1">总金额</div>
+            <div className="text-2xl font-bold text-blue-600 flex items-center gap-1">
+              <Banknote className="w-5 h-5" />
+              {totalAmount.toFixed(2)}
             </div>
           </div>
           <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
@@ -169,35 +193,32 @@ export default function Home() {
         </div>
       )}
 
-      {/* Error */}
       {error && (
         <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-red-600">
           {error}
         </div>
       )}
 
-      {/* Empty State */}
-      {watchlist.length === 0 && (
+      {activeGroupFunds.length === 0 && (
         <div className="text-center py-16">
           <div className="bg-gray-100 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-4">
             <PieChart className="w-10 h-10 text-gray-400" />
           </div>
           <h3 className="text-lg font-medium text-gray-900 mb-2">
-            暂无自选基金
+            当前分组暂无基金
           </h3>
           <p className="text-gray-500 mb-6">在上方搜索框中添加您关注的基金</p>
         </div>
       )}
 
-      {/* Fund List */}
-      {estimates.length > 0 && (
+      {filteredEstimates.length > 0 && (
         <FundList
-          funds={estimates}
+          funds={filteredEstimates}
+          groupId={activeGroupId}
           onViewDetail={(fund) => setSelectedFund(fund)}
         />
       )}
 
-      {/* Loading State */}
       {loading && estimates.length === 0 && (
         <div className="text-center py-16">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
@@ -205,7 +226,6 @@ export default function Home() {
         </div>
       )}
 
-      {/* Detail Modal */}
       {selectedFund && (
         <FundDetail
           code={selectedFund.code}
