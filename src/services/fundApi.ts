@@ -224,8 +224,6 @@ async function getHistoryNavData(fundCode: string): Promise<HistoryNavData> {
         if (script.parentNode) {
           script.parentNode.removeChild(script);
         }
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        delete (window as any).apidata;
       }
 
       script.src = url;
@@ -234,6 +232,8 @@ async function getHistoryNavData(fundCode: string): Promise<HistoryNavData> {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const apidata = (window as any).apidata as { content: string };
           cleanup();
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (window as any).apidata = undefined;
 
           if (!apidata || !apidata.content) {
             resolve({ latest: null, yesterday: null });
@@ -401,8 +401,6 @@ async function fetchHistoryPage(
         if (script.parentNode) {
           script.parentNode.removeChild(script);
         }
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        delete (window as any).apidata;
       }
 
       script.src = url;
@@ -411,6 +409,8 @@ async function fetchHistoryPage(
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const apidata = (window as any).apidata as F10ApiData;
           cleanup();
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (window as any).apidata = undefined;
 
           if (!apidata || !apidata.content) {
             resolve([]);
