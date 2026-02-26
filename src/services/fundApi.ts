@@ -191,29 +191,71 @@ function createEmptyEstimate(fundCode: string): FundEstimate {
   };
 }
 
+function parseNavFromHtml(html: string): LatestNavData[] {
+  const results: LatestNavData[] = [];
+  const rowRegex =
+    /<tr><td>(\d{4}-\d{2}-\d{2})<\/td><td[^>]*>([^<]+)<\/td><td[^>]*>[^<]+<\/td><td[^>]*>([^<]*)<\/td>/g;
+  let match;
+  while ((match = rowRegex.exec(html)) !== null && results.length < 2) {
+    const date = match[1];
+    const nav = parseFloat(match[2]) || 0;
+    let changePercent = 0;
+    if (match[3]) {
+      changePercent = parseFloat(match[3].replace("%", "")) || 0;
+    }
+    results.push({ date, nav, changePercent });
+  }
+  return results;
+}
+
 async function getHistoryNavData(fundCode: string): Promise<HistoryNavData> {
   try {
-    const url = `https://api.fund.eastmoney.com/f10/lsjz?fundCode=${fundCode}&pageIndex=1&pageSize=2&_=${Date.now()}`;
-    const data = await jsonp<EastMoneyHistoryResponse>(url, "callback");
-    const list = data.Data?.LSJZList || [];
+    const url = `https://fundf10.eastmoney.com/F10DataApi.aspx?type=lsjz&code=${fundCode}&page=1&per=2&_=${Date.now()}`;
 
-    const latest = list[0]
-      ? {
-          date: list[0].FSRQ,
-          nav: parseFloat(list[0].DWJZ) || 0,
-          changePercent: parseFloat(list[0].JZZZL) || 0,
+    return new Promise((resolve) => {
+      const script = document.createElement("script");
+      const timeout = setTimeout(() => {
+        cleanup();
+        resolve({ latest: null, yesterday: null });
+      }, 10000);
+
+      function cleanup() {
+        clearTimeout(timeout);
+        if (script.parentNode) {
+          script.parentNode.removeChild(script);
         }
-      : null;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        delete (window as any).apidata;
+      }
 
-    const yesterday = list[1]
-      ? {
-          date: list[1].FSRQ,
-          nav: parseFloat(list[1].DWJZ) || 0,
-          changePercent: parseFloat(list[1].JZZZL) || 0,
+      script.src = url;
+      script.onload = () => {
+        try {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const apidata = (window as any).apidata as { content: string };
+          cleanup();
+
+          if (!apidata || !apidata.content) {
+            resolve({ latest: null, yesterday: null });
+            return;
+          }
+
+          const navList = parseNavFromHtml(apidata.content);
+          const latest = navList[0] || null;
+          const yesterday = navList[1] || null;
+
+          resolve({ latest, yesterday });
+        } catch {
+          cleanup();
+          resolve({ latest: null, yesterday: null });
         }
-      : null;
-
-    return { latest, yesterday };
+      };
+      script.onerror = () => {
+        cleanup();
+        resolve({ latest: null, yesterday: null });
+      };
+      document.head.appendChild(script);
+    });
   } catch {
     return { latest: null, yesterday: null };
   }
@@ -332,15 +374,74 @@ function getPeriodDays(period: string): number {
   }
 }
 
+interface F10ApiData {
+  content: string;
+  records: number;
+  pages: number;
+  curpage: number;
+}
+
 async function fetchHistoryPage(
   fundCode: string,
   pageIndex: number,
-): Promise<EastMoneyHistoryResponse | null> {
+  perPage: number = 20,
+): Promise<LatestNavData[]> {
   try {
-    const url = `https://api.fund.eastmoney.com/f10/lsjz?fundCode=${fundCode}&pageIndex=${pageIndex}&pageSize=20&_=${Date.now()}`;
-    return await jsonp<EastMoneyHistoryResponse>(url, "callback");
+    const url = `https://fundf10.eastmoney.com/F10DataApi.aspx?type=lsjz&code=${fundCode}&page=${pageIndex}&per=${perPage}&_=${Date.now()}`;
+
+    return new Promise((resolve) => {
+      const script = document.createElement("script");
+      const timeout = setTimeout(() => {
+        cleanup();
+        resolve([]);
+      }, 10000);
+
+      function cleanup() {
+        clearTimeout(timeout);
+        if (script.parentNode) {
+          script.parentNode.removeChild(script);
+        }
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        delete (window as any).apidata;
+      }
+
+      script.src = url;
+      script.onload = () => {
+        try {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const apidata = (window as any).apidata as F10ApiData;
+          cleanup();
+
+          if (!apidata || !apidata.content) {
+            resolve([]);
+            return;
+          }
+
+          const results: LatestNavData[] = [];
+          const rowRegex =
+            /<tr><td>(\d{4}-\d{2}-\d{2})<\/td><td[^>]*>([^<]+)<\/td><td[^>]*>[^<]+<\/td><td[^>]*>([^<]*)<\/td>/g;
+          let match;
+          while ((match = rowRegex.exec(apidata.content)) !== null) {
+            results.push({
+              date: match[1],
+              nav: parseFloat(match[2]) || 0,
+              changePercent: parseFloat(match[3].replace("%", "")) || 0,
+            });
+          }
+          resolve(results);
+        } catch {
+          cleanup();
+          resolve([]);
+        }
+      };
+      script.onerror = () => {
+        cleanup();
+        resolve([]);
+      };
+      document.head.appendChild(script);
+    });
   } catch {
-    return null;
+    return [];
   }
 }
 
@@ -350,28 +451,14 @@ export async function getFundHistory(
 ): Promise<HistoryData> {
   try {
     const days = getPeriodDays(period);
-    const pagesNeeded = Math.ceil(days / 20);
+    const navList = await fetchHistoryPage(code, 1, days + 5);
 
-    const pagePromises: Promise<EastMoneyHistoryResponse | null>[] = [];
-    for (let i = 1; i <= pagesNeeded; i++) {
-      pagePromises.push(fetchHistoryPage(code, i));
-    }
-
-    const results = await Promise.all(pagePromises);
-
-    const allItems: EastMoneyHistoryItem[] = [];
-    for (const data of results) {
-      if (data?.ErrCode === 0 && data.Data?.LSJZList) {
-        allItems.push(...data.Data.LSJZList);
-      }
-    }
-
-    const history: FundHistoricalData[] = allItems
+    const history: FundHistoricalData[] = navList
       .slice(0, days)
       .map((item) => ({
-        date: item.FSRQ,
-        nav: parseFloat(item.DWJZ) || 0,
-        changePercent: parseFloat(item.JZZZL) || 0,
+        date: item.date,
+        nav: item.nav,
+        changePercent: item.changePercent,
       }))
       .reverse();
 
@@ -402,23 +489,9 @@ export async function getTradingDays(
       1;
 
     const fundCode = "510300";
-    const pagesNeeded = Math.ceil(daysFromToday / 20) + 1;
+    const navList = await fetchHistoryPage(fundCode, 1, daysFromToday + 30);
 
-    const pagePromises: Promise<EastMoneyHistoryResponse | null>[] = [];
-    for (let i = 1; i <= pagesNeeded; i++) {
-      pagePromises.push(fetchHistoryPage(fundCode, i));
-    }
-
-    const results = await Promise.all(pagePromises);
-
-    const allDates: string[] = [];
-    for (const data of results) {
-      if (data?.ErrCode === 0 && data.Data?.LSJZList) {
-        for (const item of data.Data.LSJZList) {
-          allDates.push(item.FSRQ);
-        }
-      }
-    }
+    const allDates = navList.map((item) => item.date);
 
     const tradingDays = allDates
       .filter((date) => date >= startDate && date <= endDate)
