@@ -1,12 +1,12 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
-import { Fund, FundEstimate } from '../types/fund.js';
-import { 
-  searchFunds, 
-  getBatchEstimates, 
+import { useEffect, useState, useCallback, useRef } from "react";
+import { Fund, FundEstimate } from "../types/fund.js";
+import {
+  searchFunds,
+  getBatchEstimates,
   getFundHistory,
-  getFundComparison 
-} from '../services/fundApi.js';
-import { useFundStore } from '../store/fundStore.js';
+  getFundComparison,
+} from "../services/fundApi.js";
+import { useFundStore } from "../store/fundStore.js";
 
 export function useFundSearch(query: string) {
   const [results, setResults] = useState<Fund[]>([]);
@@ -26,7 +26,7 @@ export function useFundSearch(query: string) {
         const funds = await searchFunds(query);
         setResults(funds);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Search failed');
+        setError(err instanceof Error ? err.message : "Search failed");
       } finally {
         setLoading(false);
       }
@@ -38,11 +38,14 @@ export function useFundSearch(query: string) {
   return { results, loading, error };
 }
 
-export function useGroupEstimates(groupFunds: string[], refreshInterval: number = 60000) {
+export function useGroupEstimates(
+  groupFunds: string[],
+  refreshInterval: number = 60000,
+) {
   const [estimates, setEstimates] = useState<FundEstimate[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
+
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const fundsRef = useRef(groupFunds);
   fundsRef.current = groupFunds;
@@ -61,7 +64,9 @@ export function useGroupEstimates(groupFunds: string[], refreshInterval: number 
       const data = await getBatchEstimates(currentFunds);
       setEstimates(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch estimates');
+      setError(
+        err instanceof Error ? err.message : "Failed to fetch estimates",
+      );
     } finally {
       setLoading(false);
     }
@@ -85,13 +90,13 @@ export function useGroupEstimates(groupFunds: string[], refreshInterval: number 
 
   useEffect(() => {
     fetchEstimates();
-  }, [groupFunds.join(','), fetchEstimates]);
+  }, [groupFunds.join(","), fetchEstimates]);
 
-  return { 
-    estimates, 
+  return {
+    estimates,
     loading,
     error,
-    refresh: fetchEstimates 
+    refresh: fetchEstimates,
   };
 }
 
@@ -104,7 +109,7 @@ export function useWatchlistEstimates(refreshInterval: number = 60000) {
   const setLoading = useFundStore((state) => state.setLoading);
   const setError = useFundStore((state) => state.setError);
   const loadWatchlist = useFundStore((state) => state.loadWatchlist);
-  
+
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const watchlistRef = useRef(watchlist);
   watchlistRef.current = watchlist;
@@ -122,7 +127,9 @@ export function useWatchlistEstimates(refreshInterval: number = 60000) {
       const data = await getBatchEstimates(currentWatchlist);
       setEstimates(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch estimates');
+      setError(
+        err instanceof Error ? err.message : "Failed to fetch estimates",
+      );
     } finally {
       setLoading(false);
     }
@@ -158,23 +165,25 @@ export function useWatchlistEstimates(refreshInterval: number = 60000) {
     .map((code) => estimates.get(code))
     .filter((e): e is FundEstimate => e !== undefined);
 
-  return { 
-    watchlist, 
-    estimates: watchlistEstimates, 
+  return {
+    watchlist,
+    estimates: watchlistEstimates,
     loading,
     error,
-    refresh: fetchEstimates 
+    refresh: fetchEstimates,
   };
 }
 
-export function useFundHistory(code: string, period: string = '1m') {
-  const [data, setData] = useState<{ date: string; nav: number; changePercent: number }[]>([]);
+export function useFundHistory(code: string, period: string = "1m") {
+  const [data, setData] = useState<
+    { date: string; nav: number; changePercent: number }[]
+  >([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    
+
     const fetchHistory = async () => {
       if (!code) return;
 
@@ -187,7 +196,9 @@ export function useFundHistory(code: string, period: string = '1m') {
         }
       } catch (err) {
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : 'Failed to fetch history');
+          setError(
+            err instanceof Error ? err.message : "Failed to fetch history",
+          );
           setData([]);
         }
       } finally {
@@ -198,7 +209,7 @@ export function useFundHistory(code: string, period: string = '1m') {
     };
 
     fetchHistory();
-    
+
     return () => {
       cancelled = true;
     };
@@ -209,7 +220,12 @@ export function useFundHistory(code: string, period: string = '1m') {
 
 export function useFundComparison(code: string, days: number = 30) {
   const [data, setData] = useState<{
-    comparisons: { date: string; estimateNav: number; actualNav: number; deviationPercent: number }[];
+    comparisons: {
+      date: string;
+      estimateNav: number;
+      actualNav: number;
+      deviationPercent: number;
+    }[];
     summary: { avgDeviationPercent: number; totalDays: number };
   } | null>(null);
   const [loading, setLoading] = useState(false);
@@ -222,13 +238,15 @@ export function useFundComparison(code: string, days: number = 30) {
       setLoading(true);
       setError(null);
       try {
-        const result = await getFundComparison(code, days);
+        const result = await getFundComparison(code);
         setData({
           comparisons: result.comparisons,
           summary: result.summary,
         });
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to fetch comparison');
+        setError(
+          err instanceof Error ? err.message : "Failed to fetch comparison",
+        );
       } finally {
         setLoading(false);
       }

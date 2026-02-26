@@ -53,9 +53,14 @@ export default function Home() {
   const getTotalProfit = () => {
     return estimates.reduce((sum, fund) => {
       const holding = getHolding(activeGroupId, fund.code);
-      if (!holding || fund.estimateNav <= 0 || fund.lastNav <= 0) return sum;
+      if (!holding) return sum;
       const shares = holding.shares;
       if (shares <= 0) return sum;
+      if (fund.navUpdatedToday) {
+        if (fund.lastNav <= 0 || fund.prevNav <= 0) return sum;
+        return sum + shares * (fund.lastNav - fund.prevNav);
+      }
+      if (fund.estimateNav <= 0 || fund.lastNav <= 0) return sum;
       return sum + shares * (fund.estimateNav - fund.lastNav);
     }, 0);
   };

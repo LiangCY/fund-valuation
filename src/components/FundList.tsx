@@ -44,13 +44,24 @@ export function FundList({
 
   const getProfit = (fund: FundEstimate) => {
     const shares = getShares(groupId, fund.code);
-    if (shares <= 0 || fund.estimateNav <= 0 || fund.lastNav <= 0) return 0;
+    if (shares <= 0) return 0;
+    if (fund.navUpdatedToday) {
+      if (fund.lastNav <= 0 || fund.prevNav <= 0) return 0;
+      return shares * (fund.lastNav - fund.prevNav);
+    }
+    if (fund.estimateNav <= 0 || fund.lastNav <= 0) return 0;
     return shares * (fund.estimateNav - fund.lastNav);
   };
 
   const getYesterdayProfit = (fund: FundEstimate) => {
     const shares = getShares(groupId, fund.code);
-    if (shares <= 0 || fund.lastNav <= 0 || fund.prevNav <= 0) return 0;
+    if (shares <= 0) return 0;
+    if (fund.navUpdatedToday) {
+      if (fund.prevNav <= 0 || !fund.lastChangePercent) return 0;
+      const prevDayNav = fund.prevNav / (1 + fund.lastChangePercent / 100);
+      return shares * (fund.prevNav - prevDayNav);
+    }
+    if (fund.lastNav <= 0 || fund.prevNav <= 0) return 0;
     return shares * (fund.lastNav - fund.prevNav);
   };
 
